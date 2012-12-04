@@ -41,6 +41,7 @@ ibSymErrThresh = 1.0e-12
 #ibRcvErrThresh = 1500*ibSymErrThresh   # for pkts
 ibRcvErrThresh = ibSymErrThresh
 errMax = { 'SymbolErrors':65535, 'RcvErrors':65535, 'LinkRecovers':255, 'LinkDowned':255 }
+
 # qdr
 portRate = '4xQDR'
 lineRate = 40*GB*0.8   # QDR, 0.8 for data rate ~= Sun's 120 errs/hour
@@ -413,13 +414,14 @@ def lidType( n ):
             else:
                 print 'unknown', namingScheme, 'fc or lc', n
                 return None
-        if nn[0][:1] == 'ib':  # ib#...
+        if n[:2] == 'ib':  # ib#...
             return 'leaf'
         print 'unknown', namingScheme, 'chip name', n
         return None
     else:
         print 'unknown fabric naming scheme'
         return None
+
 
 def filterHosts( uptime, fTime ):
     """find hosts that have been booted after a given time"""
