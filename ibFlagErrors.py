@@ -57,8 +57,8 @@ debug = 0
 #   lc == line card for 2nd level of fat tree in big central switches
 #   fc == fabric card for top level of fat tree   ""     ""
 
+namingScheme='sun'       # leaf = qnem-rack#-shelf#{a,b} or M2-*, lc,fc = M9-{LC,FC}-#{a-d}
 namingScheme='mellanox'  # lc = MF0;sx6536-5a:SXX536/L05/U1, fc = MF0;sx6536-2a:SXX536/S01/U1, leaf = ib001..
-namingScheme='sun'       # leaf = qnem-rack-shelf{a,b} or M2-*, lc,fc = M9-{LC,FC}-#{a-d}
 
 
 # from
@@ -388,9 +388,9 @@ def lidType( n ):
         # switch
         nn = n.split('-')
         if nn[0] == 'qnem':
-            return 'qnem'
+            return 'leaf'
         if nn[0] == 'M2':
-            return 'M2'
+            return 'leaf'
         # M9-2-LC-1b, M9-3-FC-6b
         if nn[0] != 'M9' or len(nn) < 3:
             #print 'parsing error', nn
@@ -403,20 +403,19 @@ def lidType( n ):
         return None
     elif namingScheme == 'mellanox':
         # switch
-        nn = n.split('-')
-        if nn[0] == 'qnem':
-            return 'qnem'
-        if nn[0] == 'M2':
-            return 'M2'
-        # M9-2-LC-1b, M9-3-FC-6b
-        if nn[0] != 'M9' or len(nn) < 3:
-            #print 'parsing error', nn
-            return None
-        if nn[2] == 'LC':
-            return 'LC'
-        elif nn[2] == 'FC':
-            return 'FC'
-        #print 'unknown type', n
+        nn = n.split(';')
+        if nn[0] == 'MF0':  # fc or lc
+            nn = nn[1].split('/')
+            if nn[1][0] == 'L':
+                return 'LC'
+            elif nn[1][0] == 'S':
+                return 'FC'
+            else:
+                print 'unknown', namingScheme, 'fc or lc', n
+                return None
+        if nn[0][:1] == 'ib':  # ib#...
+            return 'leaf'
+        print 'unknown', namingScheme, 'chip name', n
         return None
     else:
         print 'unknown fabric naming scheme'
@@ -976,7 +975,7 @@ if __name__ == '__main__':
             swPort, swName, swLid = byName[host]
             errs[k]['nlp-otherEnd'] = (swName, swLid, swPort)
 
-            assert( lidType(swName) == 'qnem' or lidType(swName) == 'M2' )
+            assert( lidType(swName) == 'leaf' )
             errs[k]['type'] = 'host<->' + lidType( swName )
 
             if (swLid, swPort) in errs.keys():
@@ -1026,31 +1025,26 @@ if __name__ == '__main__':
         #   LC <-> M2
 
         if oSwLid not in switchTree.keys():
-            assert( lidType(swName) == 'qnem' or lidType(swName) == 'M2' )
+            assert( lidType(swName) == 'leaf' )
             tt = lidType(swName) + '<->host'
             if oSwLid in ignoreLid or oSwName in ignore:
                 errs[k]['ignore'] = 'port'
         else:
             t = lidType(swName)
             ot = lidType(oSwName)
-            if (t, ot) == ('qnem', 'qnem'):
-                tt = 'qnem<->qnem'
-            elif t == 'qnem':
+            if (t, ot) == ('leaf', 'leaf'):
+                tt = 'leaf<->leaf'
+            elif t == 'leaf':
                 assert( ot == 'LC' )
-                tt = 'qnem<->LC'
+                tt = 'leaf<->LC'
             elif t == 'FC':
                 assert( ot == 'LC' )
                 tt = 'FC<->LC'
-            elif t == 'M2':
-                assert( ot == 'LC' )
-                tt = 'M2<->LC'
             elif t == 'LC':
-                if ot == 'M2':
-                    tt = 'LC<->M2'
+                if ot == 'leaf':
+                    tt = 'LC<->leaf'
                 elif ot == 'FC':
                     tt = 'LC<->FC'
-                elif ot == 'qnem':
-                    tt = 'LC<->qnem'
                 else:
                     print 'LC connected to unknown - illegal link?',
                     tt = None
@@ -1101,7 +1095,7 @@ if __name__ == '__main__':
 
     missed = []
     covered = []
-    for tt in ( ('host<->qnem'), ('qnem<->host'), ('M2<->host', 'host<->M2'), ('qnem<->qnem'), ('qnem<->LC', 'LC<->qnem', 'LC<->M2', 'M2<->LC'), ('LC<->FC', 'FC<->LC') ):
+    for tt in ( ('host<->leaf'), ('leaf<->host'), ('leaf<->leaf'), ('leaf<->LC', 'LC<->leaf'), ('LC<->FC', 'FC<->LC') ):
         print
         print tt
         print '    Sym       Rcv'
