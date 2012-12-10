@@ -17,17 +17,6 @@ startHost='xepbs'
 startHost='vu-pbs'
 startHost='r-pbs'
 
-# dirty hack for as yet un-named switches
-hackMapping = { 'S-0002c903008bc480':'ib301',
-                'S-0002c903008bca80':'ib302',
-                'S-0002c903008bc580':'ib303',
-                'S-0002c903008be700':'ib304',
-                'S-0002c903008be780':'ib305',
-                'S-0002c903008be300':'ib306',
-                'S-0002c903008bde00':'ib307',
-                'S-0002c903008bdf80':'ib308',
-                'S-0002c903008c0f00':'ib039',
-                'S-0002c903008c6380':'ib045' }
 
 def parseIbnetdiscover( ibDir=None, ibNetFile=None ):
    f = ibNetFile
@@ -87,12 +76,7 @@ def parseIbnetdiscover( ibDir=None, ibNetFile=None ):
          else:
             swName = s[3]
          if swName == '' or swName == '-':
-            # hack hack hack - the names should be in the fabric or node map files, but in case they aren't...
-            if s[1] in hackMapping.keys():
-               print 'using hackMapping for', s[1], 'to', hackMapping[s[1]]
-               swName = hackMapping[s[1]]
-            else:
-               print 'error. unnamed switch chip', s
+            print 'error. unnamed switch chip', s
          swLid = int(s[4].split()[4])
          #print 'sw', swName, 'lid', swLid
          d = {}
