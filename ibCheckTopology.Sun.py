@@ -46,12 +46,15 @@ def qnemIndexToName( i ):
     return s
 
 def m9number( name ):
-   # convert eg. M9-4-LC-1c to '4'
-   return int(name.split('-')[1])
+    # convert eg. M9-4-LC-1c to '4'
+    return int(name.split('-')[1])
 
 def lcChipName( name ):
-   # convert eg. M9-4-LC-1c to '1c'
-   return name.split('-')[3]
+    # convert eg. M9-4-LC-1c to '1c'
+    return name.split('-')[3]
+
+def isM2( name ):
+    return ( name[:2] == 'M2' )
 
 if __name__ == '__main__':
    if len(sys.argv) == 2:
@@ -88,10 +91,11 @@ if __name__ == '__main__':
            t = lidType( name )
            if t == 'FC':
                fc.append(p)
-           elif t == 'M2':
-               m2.append(p)
-           elif t == 'qnem':
-               q.append(p)
+           elif t == 'leaf':
+               if isM2(name):
+                   m2.append(p)
+               else:
+                   q.append(p)
            else:
                print 'unknown/illegal link on', swName, 'port', p, 'is type', t, '(details', a[p], ')'
 
@@ -363,9 +367,11 @@ if __name__ == '__main__':
 
    # find all M2 chips
    portmap = {}  # lids of uplinks
-   m2 = findLidsByType( switchTree, 'M2' )
+   m2 = findLidsByType( switchTree, 'leaf' )
    for k in m2:
        swName, swLid, a = switchTree[k]
+       if not isM2(swName):
+           continue
        portmap[swName] = {}
        keys = a.keys()
        for p in a.keys():
@@ -384,6 +390,8 @@ if __name__ == '__main__':
    # check M2 uplinks are spread across the right LCs
    for k in m2:
        swName, swLid, a = switchTree[k]
+       if not isM2(swName):
+           continue
        p = portmap[swName]
        #print swName, p
        m = {}
@@ -405,6 +413,8 @@ if __name__ == '__main__':
    # m2-1 has odd marmot + lots, m2-2 even marmot + lots, m2-3 odd hamster, m2-4 even hamster
    for k in m2:
        swName, swLid, a = switchTree[k]
+       if not isM2(swName):
+           continue
        p = portmap[swName]
        #print swName, p
        if 'node' not in p.keys():  # no up nodes on switch
