@@ -401,7 +401,7 @@ def lidType( n ):
         elif nn[2] == 'FC':
             return 'FC'
         #print 'unknown type', n
-        return None
+        return None   # 'None' probably means a node
     elif namingScheme == 'mellanox':
         # switch
         nn = n.split(';')
@@ -416,8 +416,8 @@ def lidType( n ):
                 return None
         if n[:2] == 'ib':  # ib#...
             return 'leaf'
-        print 'unknown', namingScheme, 'chip name', n
-        return None
+        #print 'unknown', namingScheme, 'chip name', n
+        return None   # 'None' probably means a node
     else:
         print 'unknown fabric naming scheme'
         return None
