@@ -39,9 +39,10 @@ def parseIbnetdiscover( ibDir=None, ibNetFile=None ):
    # [33]    "S-0021283a89e015d2"[33]                # "0x0021283a89e015d2 M9-3-LC-5d" lid 520 4xQDR
    # ...
 
-   # look for line pairs like ->
+   # ...
    # Ca      2 "H-00212800013e60f6"          # "marmot2 HCA-1"
    # [1](212800013e60f7)     "S-0021283a842110d2"[28]                # lid 241 lmc 0 "Sun DCS 648 QDR LC switch 1.6" lid 211 4xQDR
+   # [2](212800013e60f8)     "S-0021283a842110d2"[29]                # lid 256 lmc 0 "Sun DCS 648 QDR LC switch 1.6" lid 211 4xQDR
 
    lph = []
    switchTree = {}
@@ -51,18 +52,28 @@ def parseIbnetdiscover( ibDir=None, ibNetFile=None ):
    next = 0
    for l in lines:
       if next == 'ca':
+         s = l.split('"')
+         if len(s) < 2:
+            # ran out of ports on this HCA
+            next = 0
+            continue
          swlid = int(l.split()[-2])
          swport = int(l.split('[')[2].split(']')[0])
          lid = int(l.split('#')[1].split()[1])
-         lph.append( ( swlid, swport, lid, host ) )
+         port = int(l.split(']')[0].split('[')[1])
+         h = host
+         if port != 1: # multi-port HCA
+            h += ' port%d' % port
+         lph.append( ( swlid, swport, lid, h ) )
          rates[(lid, 1)] = l.split()[-1]
-         next = 0
+         next = 'ca' # goto next port on this HCA
       elif l[:2] == 'Ca':
          host = l.split('"')[3]
          h = host.split()
          if len(h) > 1:
             if h[1] == 'HCA-1' or h[1] == 'HCA-2':
                 host = host.split()[0]
+                host += ' ' + host[1]  # append HCA-* to the hostname
          else:
             #print 'skipping unnamed node', l,
             next = 0
@@ -95,7 +106,9 @@ def parseIbnetdiscover( ibDir=None, ibNetFile=None ):
          remPort = int(s[2].split(']')[0][1:])
          t = s[1][0]
          if t == 'H':    # host at the end of this port
-            name = s[3].split()[0]
+            name = s[3]
+            if remPort != 1:  # found a multi-port HCA. append the port number to the name
+               name += ' port%d' % remPort
          elif t == 'S':  # switch  ""
             if len(s[3].split()) > 1:
                name = s[3].split()[1]

@@ -335,8 +335,8 @@ if __name__ == '__main__':
                    continue
                name, lid, port = a[p]
                n = 'v%d' % cnt
-               if n != name:
-                   print 'error node', name, 'is out of order - should be', n
+               if n != name.split()[0]:
+                   print 'error node', name.split()[0], 'is out of order - should be', n
 
    # check qnem<->qnem
    for q in range(1,64):
@@ -421,28 +421,29 @@ if __name__ == '__main__':
            continue
        for l,n in p['node']:
            #print swName, n
-           base = n.rstrip(string.digits)
-           digit = n[len(base):]
+           host = n.split()[0]  # pull off the HCA-1
+           base = host.rstrip(string.digits)
+           digit = host[len(base):]
            if len(digit) and digit[0] in string.digits:
                digit = int(digit)
-           elif len(base) != len(n):
+           elif len(base) != len(host):
                print 'parsing error'
-           if len(base) == len(n):
+           if len(base) == len(host):
                #print 'not a numbered node'
                digit = None
            #print base, digit
            if swName == 'M2-4':
                if base != 'hamster' or digit%2 != 0:
-                   print swName, 'has a non-even or non-hamster', n
+                   print swName, 'has a non-even or non-hamster', host
            elif swName == 'M2-3':
                if base != 'hamster' or digit%2 != 1:
-                   print swName, 'has a non-odd or non-hamster', n
+                   print swName, 'has a non-odd or non-hamster', host
            elif swName == 'M2-2':
                if base == 'marmot' and digit%2 != 0:
-                   print swName, 'has a non-even marmot', n
+                   print swName, 'has a non-even marmot', host
            elif swName == 'M2-1':
                if base == 'marmot' and digit%2 != 1:
-                   print swName, 'has a non-odd marmot', n
+                   print swName, 'has a non-odd marmot', host
 
    # highly unlikely, but check links between FC's and LC's are ok
 

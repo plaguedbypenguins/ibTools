@@ -13,6 +13,15 @@ ibDir = '/home/rjh'
 ibDir = '/root/ib'
 
 
+def uniq( list ):
+    l = []
+    prev = None
+    for i in list:
+        if i != prev:
+            l.append( i )
+        prev = i
+    return l
+
 def findLidsByType( switchTree, t ):
     l = []
     for k in switchTree.keys():
@@ -61,7 +70,7 @@ def nodeNumToName(i):
     return 'r%.4d' % i
 
 def nodeNameToNum(name):
-    return int(name[1:])
+    return int(name.split()[0][1:])
 
 if __name__ == '__main__':
    if len(sys.argv) == 2:
@@ -337,8 +346,8 @@ if __name__ == '__main__':
                print 'node', n, 'not on', leaf, 'port', p
                continue
            name, lid, port = a[p]
-           if n != name:
-               print 'error node', name, 'is out of order - should be', n
+           if n != name.split()[0]:  # trim off HCA-*
+               print 'error node', name.split()[0], 'is out of order - should be', n
 
    # check leaf<->leaf
    #   - not applicable here - see ibCheckTopology.Sun.py
@@ -388,10 +397,6 @@ if __name__ == '__main__':
        if len(mm.keys()) != 6:
            print swName, 'doesn\'t have uplinks to 6 core switches, only', mm.keys()
 
-   # 'cos the dual ports the below is all wrong...
-   print 'no oss/mds checks yet'
-   sys.exit(1)
-
    # check the connections from hosts to M2's
    # make sure lemming and gerbil pairs are separated, and all lemmings are separate from all gerbils
    oss_mds = {}
@@ -405,53 +410,87 @@ if __name__ == '__main__':
            continue
        for l,n in p['node']:
            #print swName, n
-           base = n.rstrip(string.digits)
-           digit = n[len(base):]
+           #  n is eg. lemming1 HCA-1 port2
+           host = n.split()[0]
+           base = host.rstrip(string.digits)
+           digit = host[len(base):]
            if len(digit) and digit[0] in string.digits:
                digit = int(digit)
-           elif len(base) != len(n):
+           elif len(base) != len(host):
                print 'parsing error'
-           if len(base) == len(n):
+           if len(base) == len(host):
                #print 'not a numbered node'
                digit = None
            #print base, digit
            oss_mds[n] = swName
 
-   for i in range(1,numOss+1,2):
-       n = ossName + '%d' % i
-       twin = ossName + '%d' % (i+1)
-       if oss_mds[n] == oss_mds[twin]:
-           print 'oss pair', i,i+1, 'are on the same switch', oss_mds[n]
+   # check for oss/mds pairs on the same switch
+   for k in ( ('mds', mdsName, numMds), ('oss', ossName, numOss) ):
+       t, base, num = k
+       for j in ( '', ' port2' ):
+           for i in range(1,num+1,2):
+               n = base + '%d HCA-1' % i + j
+               twin = base + '%d HCA-1' % (i+1) + j
+               if n not in oss_mds.keys():
+                   print n, 'not found'
+                   continue
+               if twin not in oss_mds.keys():
+                   print twin, 'not found'
+                   continue
+               if oss_mds[n] == oss_mds[twin]:
+                   print t + ' pair', n,twin, 'are on the same switch', oss_mds[n]
 
-   for i in range(1,numMds+1,2):
-       n = mdsName + '%d' % i
-       twin = mdsName + '%d' % (i+1)
-       if oss_mds[n] == oss_mds[twin]:
-           print 'mds pair', i,i+1, 'are on the same switch', oss_mds[n]
+   # check for primary and failover oss/mds connections on the same switch
+   for k in ( ('mds', mdsName, numMds), ('oss', ossName, numOss) ):
+       t, base, num = k
+       for i in range(1,num+1):
+           n1 = base + '%d HCA-1' % i
+           n2 = base + '%d HCA-1' % i + ' port2'
+           if n1 not in oss_mds.keys():
+               print n1, 'not found'
+               continue
+           if n2 not in oss_mds.keys():
+               print n2, 'not found'
+               continue
+           if oss_mds[n1] == oss_mds[n2]:
+               print t + ' pair', n1,n2, 'are on the same switch', oss_mds[n1]
 
+   # check for mix of oss/mds on the same switches
    ossSw = []
-   for i in range(1,numOss+1,2):
-       n = ossName + '%d' % i
-       ossSw.append(oss_mds[n])
-
    mdsSw = []
-   for i in range(1,numMds+1,2):
-       n = mdsName + '%d' % i
-       mdsSw.append(oss_mds[n])
+   for k in ( ('mds', mdsName, numMds, mdsSw), ('oss', ossName, numOss, ossSw) ):
+       t, base, num, l = k
+       for i in range(1,num+1):
+           for j in ( '', ' port2' ):
+               n = base + '%d HCA-1' % i + j
+               if n not in oss_mds.keys():
+                   continue
+               l.append(oss_mds[n])
+   ossSw.sort()
+   mdsSw.sort()
+   ossSw = uniq(ossSw)
+   mdsSw = uniq(mdsSw)
+   #print 'oss sw', ossSw
+   #print 'mds sw', mdsSw
 
-   for i in range(1,numOss+1,2):
-       n = ossName + '%d' % i
-       sw = oss_mds[n]
-       if sw in mdsSw:
-           print n, 'is on a switch with mds nodes'
+   for i in range(1,numOss+1):
+       for j in ( '', ' port2' ):
+           n = ossName + '%d HCA-1' % i + j
+           if n not in oss_mds.keys():
+               continue
+           sw = oss_mds[n]
+           if sw in mdsSw:
+               print n, 'is on a switch with mds nodes'
 
-   for i in range(1,numMds+1,2):
-       n = mdsName + '%d' % i
-       sw = oss_mds[n]
-       if sw in ossSw:
-           print n, 'is on a switch with oss nodes'
+   for i in range(1,numMds+1):
+       for j in ( '', ' port2' ):
+           n = mdsName + '%d HCA-1' % i + j
+           if n not in oss_mds.keys():
+               continue
+           sw = oss_mds[n]
+           if sw in ossSw:
+               print n, 'is on a switch with oss nodes'
 
    # highly unlikely, but could check links between FC's and LC's are ok too?
-
 
    sys.exit(0)
