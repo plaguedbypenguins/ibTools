@@ -159,11 +159,11 @@ if __name__ == '__main__':
        #print swName, 'ports', ports
        #print 'q', q
 
-       if not len(q):
+       if not len(q):  # handle a line card with nothing plugged into it
            continue
 
        # check they are connected to the correct leafs in the correct order
-       # each LC should go to 6 leaf chips, in 3 shelves.
+       # each LC should go to 6 leaf chips
        names = {}
        for p in q:
            name, lid, port = a[p]
