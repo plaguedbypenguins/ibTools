@@ -16,6 +16,7 @@ ibDirDefault = '/root/ib'
 startHost='xepbs'
 startHost='vu-pbs'
 startHost='r-pbs'
+startHost='r-pbs HCA-1'
 
 
 def parseIbnetdiscover( ibDir=None, ibNetFile=None ):
