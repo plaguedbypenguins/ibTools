@@ -968,9 +968,8 @@ if __name__ == '__main__':
             errs[k]['ignore'] = 'lid'
 
         # host
-        n = errs[k]['name'].split()
-        if ( len(n) == 2 and n[1] == 'HCA-1' ) or ( len(n) == 1 and n[0] == 'HCA-1' ) or ( lid not in switchTree.keys() ):
-            host = n[0]
+        if lid not in switchTree.keys():
+            host = errs[k]['name']
             if host in ignore and 'ignore' not in errs[k].keys():
                 errs[k]['ignore'] = 'host'
             errs[k]['nlp'] = (host, lid, port)
