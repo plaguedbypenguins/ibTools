@@ -1,0 +1,29 @@
+#!/bin/sh
+
+export PATH=$PATH:/usr/sbin:/root/ib
+
+addr=some_email_addr
+mach=some_machine
+
+file="`date +'%F-%T'`"
+for f in ibnetdiscover "ibcheckerrors.rjh -N -T /root/ib/thresholds $file.ibnetdiscover" ibchecknet "ibdiagnet -ls 10 -lw 4x -c 1" ibnodes "ibqueryerrors -rR -s LinkDowned,RcvSwRelayErrors,XmtDiscards,XmtWait"; do
+   n=`echo $f | cut -d. -f1`
+   n=`echo $n | cut -d' ' -f1`
+   $f > $file.$n 2>&1
+done
+ibPerfqueryAll.py $file.perfstats > $file.perfstats.out 2>&1
+rebootedRecently.py > $file.rebooted
+ibFlagErrors.py > $file.flagerrors.summary
+ibFlagErrors.py -a -l -r > $file.flagerrors
+
+# look for known serious patterns, excluding [1-2]e-12
+cat $file.flagerrors.summary | grep ibwarn                                                                                                      > $file.flagerrors.summary.errs
+cat $file.flagerrors.summary | egrep -B2 '1x|2x|DDR|SDR|^ \*|>\*' | grep -v '^ \*[1-2]\..e-12' | egrep -B2 '1x|2x|DDR|SDR|^ \*|>\*' | grep -v -- -- >> $file.flagerrors.summary.errs
+cat $file.flagerrors.summary | grep 'LinkRecover' | grep -v 'only displaying' >> $file.flagerrors.summary.errs
+if [ -s $file.flagerrors.summary.errs ]; then
+   if [ $# -ne 0 ]; then
+      /bin/mail -s "$mach IB errors" $addr -- -f $addr < $file.flagerrors.summary.errs
+   fi
+else
+   rm $file.flagerrors.summary.errs
+fi

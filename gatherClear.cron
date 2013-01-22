@@ -1,0 +1,5 @@
+#!/bin/sh
+
+cd ~/ib/
+./gather cron
+./clear

@@ -1,0 +1,13 @@
+#!/bin/sh
+
+ibCheckTopology.py | grep -v 'host not on qnem' > /tmp/top.$$
+
+addr=email_address_here
+mach=machine_name
+
+# first 4 lines are normal output, and the rest are errors.
+if [ `cat /tmp/top.$$ | wc -l` -gt 4 ]; then
+   /bin/mail -s "$mach IB Topology errors" $addr -- -f $addr < /tmp/top.$$
+fi
+
+rm -f /tmp/top.$$

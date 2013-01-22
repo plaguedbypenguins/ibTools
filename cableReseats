@@ -1,0 +1,70 @@
+#!/bin/sh
+
+# args are pairs of qnem LC eg. qnem-07-4a M9-4-LC-0c ...
+
+tmp=/tmp/blah.$$
+n=""
+while true; do
+   if [ $# -eq 1 ]; then
+      echo args must be pairs of qnem qnem, or qnem lc, not $*
+      exit 1
+   elif [ $# -eq 0 ]; then
+      break
+   fi
+   q=$1
+   o=$2
+   shift ; shift
+   
+   if [ `echo $q | cut -d- -f1` != "qnem" ]; then
+      echo need a qnem as the first argument
+      exit 1
+   fi
+
+   n=$n,`/opt/root/nodesOnShelf.py $q`
+
+   ibPortsOfLink.py $q $o -v | sed 's/^/# /' >> $tmp.dis
+   ibPortsOfLink.py $q $o | grep -v ibnetdiscover | sed 's/^/ibportstate /;s/$/ disable/' >> $tmp.dis
+   ibPortsOfLink.py $q $o | grep -v ibnetdiscover | sed 's/^/ibportstate /' >> $tmp.dis
+
+   ibPortsOfLink.py $q $o | grep -v ibnetdiscover | sed 's/^/ibportstate /;s/$/ enable/' >> $tmp.en
+done
+
+if [ "$n" = "" ]; then
+   exit 0
+fi
+
+# strip leading comma
+n=`echo $n | sed s/^,//`
+
+echo /opt/root/stopScheduler
+echo pbsnodes -n \'v[$n]\' -o
+echo /opt/root/suspendJobsOnNodeList \`/opt/root/compact.py -e $n\`
+echo cexec :$n sync
+echo cexec :$n sync
+#echo qmgr -c \'set server scheduling = False\'
+#echo '# do the suspend and sync again'
+cat $tmp.dis | grep ^#
+cat $tmp.dis | grep disable
+cat $tmp.dis | egrep -v '^#|disable'
+echo "# wait for OpenSM to settle"
+#echo qmgr -c \'set server scheduling = True\'
+echo /opt/root/startScheduler
+echo pbsnodes -n \'v[$n]\' -r
+echo '#'
+echo '# go and reseat cable'
+echo '#'
+echo /opt/root/stopScheduler
+echo pbsnodes -n \'v[$n]\' -o
+echo /opt/root/suspendJobsOnNodeList \`/opt/root/compact.py -e $n\`
+echo cexec :$n sync
+echo cexec :$n sync
+#echo qmgr -c \'set server scheduling = False\'
+#echo '# do the suspend and sync again'
+cat $tmp.en
+cat $tmp.dis | egrep -v '^#|disable'
+echo "# wait for OpenSM to settle"
+#echo qmgr -c \'set server scheduling = True\'
+echo /opt/root/startScheduler
+echo pbsnodes -n \'v[$n]\' -r
+
+rm -f $tmp.dis $tmp.en

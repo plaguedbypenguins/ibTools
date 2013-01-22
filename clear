@@ -1,0 +1,8 @@
+#!/bin/sh
+
+export PATH=$PATH:/usr/sbin
+
+file="`date +'%F-%T'`"
+for f in ibclearerrors; do
+   $f > $file.$f
+done

@@ -1,0 +1,14 @@
+#!/bin/sh
+
+export PATH=$PATH:/usr/sbin:/root/ib
+
+file="`date +'%F-%T'`"
+for f in ibnetdiscover "ibcheckerrors.rjh -N -T /root/ib/thresholds $file.ibnetdiscover" "ibqueryerrors -rR -s LinkDowned,RcvSwRelayErrors,XmtDiscards,XmtWait"; do
+   n=`echo $f | cut -d. -f1`
+   n=`echo $n | cut -d' ' -f1`
+   $f > $file.$n 2>&1
+done
+ibPerfqueryAll.py $file.perfstats > $file.perfstats.out 2>&1
+rebootedRecently.py > $file.rebooted
+ibFlagErrors.py > $file.flagerrors.summary
+ibFlagErrors.py -a -l -r > $file.flagerrors
