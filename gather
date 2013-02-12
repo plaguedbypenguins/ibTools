@@ -6,11 +6,19 @@ addr=some_email_addr
 mach=some_machine
 
 file="`date +'%F-%T'`"
-for f in ibnetdiscover "ibcheckerrors.rjh -N -T /root/ib/thresholds $file.ibnetdiscover" ibchecknet "ibdiagnet -ls 10 -lw 4x -c 1" ibnodes "ibqueryerrors -rR -s LinkDowned,RcvSwRelayErrors,XmtDiscards,XmtWait"; do
+# serial
+for f in ibnetdiscover; do
    n=`echo $f | cut -d. -f1`
    n=`echo $n | cut -d' ' -f1`
    $f > $file.$n 2>&1
 done
+# parallel
+for f in "ibcheckerrors.rjh -N -T /root/ib/thresholds $file.ibnetdiscover" ibchecknet "ibdiagnet -ls 10 -lw 4x -c 1" ibnodes "ibqueryerrors -rR -s LinkDowned,RcvSwRelayErrors,XmtDiscards,XmtWait"; do
+   n=`echo $f | cut -d. -f1`
+   n=`echo $n | cut -d' ' -f1`
+   $f > $file.$n 2>&1 &
+done
+wait
 ibPerfqueryAll.py $file.perfstats > $file.perfstats.out 2>&1
 rebootedRecently.py > $file.rebooted
 ibFlagErrors.py > $file.flagerrors.summary
